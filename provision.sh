@@ -11,6 +11,19 @@ if ! id claude &>/dev/null; then
   chmod 440 /etc/sudoers.d/claude
 fi
 
+# ─── Auto-switch vagrant ssh to claude user ─────────────────
+# Vagrant SSHs in as 'vagrant', this makes interactive sessions
+# drop straight into the claude user. Non-interactive sessions
+# (like vagrant provision) are unaffected thanks to the bashrc
+# interactivity guard.
+cat >> /home/vagrant/.bashrc << 'VAGRANT_BASHRC'
+
+# Auto-switch to claude user on interactive SSH
+if [ -n "$SSH_CONNECTION" ]; then
+  exec sudo -iu claude
+fi
+VAGRANT_BASHRC
+
 # ─── Update packages ─────────────────────────────────────────
 apt-get update
 apt-get upgrade -y
@@ -52,16 +65,55 @@ su - claude -c 'source ~/.nvm/nvm.sh && npx playwright install chromium'
 # ─── Enable services ─────────────────────────────────────────
 systemctl enable ssh
 systemctl start ssh
-systemctl enable lightdm
-systemctl set-default graphical.target
 
 # ─── Configure LightDM auto-login ────────────────────────────
-mkdir -p /etc/lightdm/lightdm.conf.d
-cat > /etc/lightdm/lightdm.conf.d/50-autologin.conf << 'EOF'
+usermod -aG nopasswdlogin claude
+cat > /etc/lightdm/lightdm.conf << 'EOF'
 [Seat:*]
 autologin-user=claude
 autologin-user-timeout=0
+autologin-session=xfce
 EOF
+
+# ─── Auto-resize display for VirtualBox on ARM ──────────────
+# VBoxClient --vmsvga-session doesn't apply resize hints on ARM,
+# so we poll xrandr and apply the preferred mode when it changes.
+cat > /usr/local/bin/vbox-autoresize << 'SCRIPT'
+#!/bin/bash
+while true; do
+  output=$(DISPLAY=:0 xrandr 2>/dev/null) || { sleep 2; continue; }
+  preferred=$(echo "$output" | grep -A1 "Virtual-1 connected" | tail -1 | awk '{print $1}')
+  current=$(echo "$output" | grep "Virtual-1 connected" | grep -oP '\d+x\d+' | head -1)
+  if [ -n "$preferred" ] && [ -n "$current" ] && [ "$preferred" != "$current" ]; then
+    DISPLAY=:0 xrandr --output Virtual-1 --preferred 2>/dev/null
+  fi
+  sleep 1
+done
+SCRIPT
+chmod +x /usr/local/bin/vbox-autoresize
+
+cat > /etc/systemd/system/vbox-autoresize.service << 'UNIT'
+[Unit]
+Description=VirtualBox display auto-resize
+After=lightdm.service
+
+[Service]
+ExecStart=/usr/local/bin/vbox-autoresize
+Restart=always
+User=claude
+Environment=XAUTHORITY=/home/claude/.Xauthority
+
+[Install]
+WantedBy=graphical.target
+UNIT
+systemctl enable vbox-autoresize
+
+# ─── Start desktop ───────────────────────────────────────────
+systemctl enable lightdm
+systemctl set-default graphical.target
+systemctl start lightdm
+sleep 2
+systemctl start vbox-autoresize
 
 # ─── Set up shared folder ────────────────────────────────────
 mkdir -p /home/claude/shared
