@@ -11,6 +11,7 @@ A pre-configured Ubuntu 24.04 LTS virtual machine with Claude Code and claude-fl
 - **claude-flow** orchestrator (`claude-flow@alpha`)
 - **Chromium** and **Firefox** browsers
 - **Playwright** with Chromium (for browser automation)
+- **Display auto-resize** when scaling the VirtualBox window (ARM workaround included)
 - **SSH** server enabled
 - Build essentials, git, curl, wget, vim
 
@@ -197,6 +198,56 @@ Within the shared folder, mount options provide defense-in-depth:
 
 If the shared folder is already mounted, `provision.sh` remounts it with `nodev,nosuid` to block device file tricks and privilege escalation via setuid binaries.
 
+## Connecting to Host Services
+
+The VM uses a private network so it can reach services running on your host machine (like MongoDB, Redis, or any other server).
+
+| Machine | IP address |
+|---|---|
+| Host (your Mac/PC) | `192.168.56.1` |
+| VM (guest) | `192.168.56.10` |
+
+To verify connectivity, run this inside the VM:
+
+```bash
+ping 192.168.56.1
+```
+
+### Key requirement: bind to the right interface
+
+By default, most services only listen on `127.0.0.1` (localhost), which means they only accept connections from the same machine. For the VM to connect, the service must listen on `192.168.56.1` or `0.0.0.0` (all interfaces).
+
+**MongoDB** — edit `/usr/local/etc/mongod.conf` (macOS Homebrew) or `/etc/mongod.conf` (Linux):
+
+```yaml
+net:
+  bindIp: 0.0.0.0
+```
+
+Then restart: `brew services restart mongodb-community` (macOS) or `sudo systemctl restart mongod` (Linux).
+
+**Redis** — edit `/usr/local/etc/redis.conf` (macOS Homebrew) or `/etc/redis/redis.conf` (Linux):
+
+```
+bind 0.0.0.0
+```
+
+Then restart: `brew services restart redis` (macOS) or `sudo systemctl restart redis` (Linux).
+
+**macOS firewall** — if you have the firewall enabled (System Settings → Network → Firewall), make sure incoming connections are allowed for the service, or add an exception.
+
+### Using host services from inside the VM
+
+Point your application at `192.168.56.1` instead of `localhost`. For example:
+
+```bash
+# MongoDB
+mongodb://192.168.56.1:27017/mydb
+
+# Redis
+redis://192.168.56.1:6379
+```
+
 ## VM Management
 
 After the initial setup, you manage the VM with Vagrant commands. Run these from your **host machine** (not inside the VM), in the same directory as the `Vagrantfile`:
@@ -207,7 +258,7 @@ vagrant up          # Start the VM again (fast — no re-provisioning)
 vagrant reload      # Restart the VM (halt + up)
 vagrant destroy     # Delete the VM entirely (re-run ./up.sh to recreate from scratch)
 vagrant provision   # Re-run provision.sh without recreating the VM (useful after editing provision.sh)
-vagrant ssh         # Open a terminal inside the VM from your host
+vagrant ssh         # SSH into the VM (auto-switches to claude user)
 ```
 
 ### Lifecycle summary
@@ -281,24 +332,65 @@ Not all Vagrant boxes support ARM64. The `bento/ubuntu-24.04` box supports both 
 
 ### Desktop doesn't appear
 
-Provisioning may still be running. The first boot installs a lot of packages, which can take several minutes. Wait for it to finish, then reboot:
+The XFCE desktop should auto-login and appear immediately after provisioning. If you see a text console instead, the graphical target may not have started. Try:
+
+```bash
+vagrant ssh -c 'sudo systemctl start lightdm'
+```
+
+If that doesn't help, reboot:
 
 ```bash
 vagrant reload
 ```
 
-### npm packages not installed
+### Display doesn't resize with VirtualBox window
 
-Check the provisioning log for errors:
+On ARM (Apple Silicon), VBoxClient doesn't auto-apply resize hints. The VM includes a workaround service (`vbox-autoresize`) that polls for resolution changes and applies them. Check that it's running:
 
 ```bash
-vagrant ssh -c "cat /var/log/syslog | grep provision"
+vagrant ssh -c 'systemctl status vbox-autoresize'
 ```
 
-Then install manually if needed:
+If it's not running, start it:
+
+```bash
+vagrant ssh -c 'sudo systemctl start vbox-autoresize'
+```
+
+### Can't connect to host services from VM
+
+If your app inside the VM can't reach a service on the host (e.g. `EHOSTUNREACH` or `Connection refused`):
+
+1. **Check the service is listening on the right interface.** Run on the host:
+   ```bash
+   # macOS
+   lsof -iTCP:27017 -sTCP:LISTEN
+   # Linux
+   ss -tlnp | grep 27017
+   ```
+   If it shows `127.0.0.1:27017`, the service is only accepting local connections. Change its bind address to `0.0.0.0` (see [Connecting to Host Services](#connecting-to-host-services) above).
+
+2. **Check connectivity from inside the VM:**
+   ```bash
+   ping 192.168.56.1
+   ```
+
+3. **If ping fails**, the host-only network may not exist. On the host, check:
+   ```bash
+   VBoxManage list hostonlyifs
+   ```
+   You should see a `vboxnet0` interface with IP `192.168.56.1`. If it's missing, run `vagrant reload` to recreate the network.
+
+4. **After changing Vagrantfile networking**, always run `vagrant reload` to apply the changes.
+
+### npm packages not installed
+
+All npm packages are installed via nvm for the `claude` user. To reinstall manually, SSH in and run:
 
 ```bash
 vagrant ssh
-sudo npm install -g @anthropic-ai/claude-code claude-flow@alpha playwright
-sudo npx playwright install --with-deps chromium
+source ~/.nvm/nvm.sh
+npm install -g @anthropic-ai/claude-code claude-flow@alpha playwright
+npx playwright install chromium
 ```

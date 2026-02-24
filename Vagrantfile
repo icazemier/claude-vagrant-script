@@ -7,8 +7,8 @@ Vagrant.configure("2") do |config|
   config.vm.provider "virtualbox" do |vb|
     vb.gui = true
     vb.name = "Claude Dev VM"
-    vb.memory = 4096
-    vb.cpus = 2
+    vb.memory = 8192
+    vb.cpus = 4
     vb.customize ["modifyvm", :id, "--vram", "128"]
     vb.customize ["modifyvm", :id, "--graphicscontroller", "vmsvga"]
     vb.customize ["modifyvm", :id, "--accelerate3d", "off"]
@@ -23,6 +23,11 @@ Vagrant.configure("2") do |config|
   if Vagrant.has_plugin?("vagrant-vbguest")
     config.vbguest.auto_update = false
   end
+
+  # Private network so the guest can reach host services
+  # (e.g. Redis on port 6379, MongoDB on port 27017).
+  # Guest (VM) IP: 192.168.56.10   Host IP: 192.168.56.1
+  config.vm.network "private_network", ip: "192.168.56.10"
 
   config.vm.synced_folder ".", "/vagrant", disabled: true
 
