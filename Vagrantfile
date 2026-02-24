@@ -1,5 +1,5 @@
 Vagrant.configure("2") do |config|
-  vm_arch = ENV["VM_ARCH"] || "amd64"
+  vm_arch = ENV["VM_ARCH"] || "arm64"
   config.vm.box = "bento/ubuntu-24.04"
   config.vm.box_architecture = vm_arch
   config.vm.hostname = "claude-dev"

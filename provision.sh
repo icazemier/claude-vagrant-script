@@ -24,6 +24,30 @@ if [ -n "$SSH_CONNECTION" ]; then
 fi
 VAGRANT_BASHRC
 
+# ─── Remove snapd (saves ~5 GB) ─────────────────────────────
+# XFCE doesn't need snaps; Playwright provides its own Chromium.
+if command -v snap &>/dev/null; then
+  snap list --all | awk '/^[a-z]/ && !/^Name/ {print $1}' | while read -r pkg; do
+    snap remove --purge "$pkg" 2>/dev/null || true
+  done
+  systemctl stop snapd.socket snapd.service 2>/dev/null || true
+  apt-get autopurge -y snapd
+  rm -rf /snap /var/snap /var/lib/snapd /root/snap /home/*/snap
+  # Prevent snapd from being pulled back in
+  cat > /etc/apt/preferences.d/no-snapd << 'PREF'
+Package: snapd
+Pin: release *
+Pin-Priority: -1
+PREF
+fi
+
+# ─── Extend LV to use full disk ────────────────────────────
+# The bento box only allocates half the VG to the root LV.
+if command -v lvextend &>/dev/null; then
+  lvextend -l +100%FREE /dev/ubuntu-vg/ubuntu-lv 2>/dev/null || true
+  resize2fs /dev/ubuntu-vg/ubuntu-lv 2>/dev/null || true
+fi
+
 # ─── Update packages ─────────────────────────────────────────
 apt-get update
 apt-get upgrade -y
@@ -42,8 +66,6 @@ apt-get install -y \
   xfce4-goodies \
   lightdm \
   lightdm-gtk-greeter \
-  chromium-browser \
-  firefox \
   xterm
 
 # ─── Install nvm and Node.js 22 for claude user ──────────────
@@ -51,6 +73,7 @@ su - claude -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/in
 su - claude -c 'source ~/.nvm/nvm.sh && nvm install 22 && nvm alias default 22'
 
 # ─── Install npm globals (as claude, via nvm) ────────────────
+su - claude -c 'source ~/.nvm/nvm.sh && npm install -g yarn'
 su - claude -c 'source ~/.nvm/nvm.sh && npm install -g @anthropic-ai/claude-code'
 su - claude -c 'source ~/.nvm/nvm.sh && npm install -g claude-flow@alpha'
 su - claude -c 'source ~/.nvm/nvm.sh && npm install -g playwright'
@@ -65,6 +88,21 @@ su - claude -c 'source ~/.nvm/nvm.sh && npx playwright install chromium'
 # ─── Enable services ─────────────────────────────────────────
 systemctl enable ssh
 systemctl start ssh
+
+# ─── Firewall (UFW) ──────────────────────────────────────────
+apt-get install -y ufw
+
+ufw default deny incoming
+ufw default allow outgoing
+
+# Allow SSH from anywhere (required for vagrant ssh)
+ufw allow 22/tcp
+
+# Allow all traffic from the host-only network
+ufw allow from 192.168.56.0/24
+
+# Enable firewall (--force to avoid interactive prompt)
+ufw --force enable
 
 # ─── Configure LightDM auto-login ────────────────────────────
 usermod -aG nopasswdlogin claude
@@ -172,6 +210,11 @@ Categories=System;TerminalEmulator;
 DESKTOP
 chmod +x /home/claude/Desktop/claude-terminal.desktop
 chown -R claude:claude /home/claude/Desktop
+
+# ─── Clean up caches to free disk space ──────────────────
+apt-get clean
+rm -rf /var/lib/apt/lists/*
+su - claude -c 'source ~/.nvm/nvm.sh && npm cache clean --force && yarn cache clean'
 
 echo ""
 echo "╔══════════════════════════════════════════════════════════╗"
