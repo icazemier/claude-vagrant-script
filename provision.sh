@@ -127,6 +127,15 @@ fi
 # ─── Welcome message in .bashrc ──────────────────────────────
 cat >> /home/claude/.bashrc << 'BASHRC'
 
+# ─── Start ssh-agent if not already running ───────────────
+SSH_AGENT_SOCK="$HOME/.ssh/agent.sock"
+if [ ! -S "$SSH_AGENT_SOCK" ] || ! ssh-add -l &>/dev/null; then
+  rm -f "$SSH_AGENT_SOCK"
+  eval "$(ssh-agent -a "$SSH_AGENT_SOCK" -s)" > /dev/null
+else
+  export SSH_AUTH_SOCK="$SSH_AGENT_SOCK"
+fi
+
 # ─── Claude Dev Environment ───────────────────────────────
 echo ""
 echo "╔══════════════════════════════════════════════════════════╗"
