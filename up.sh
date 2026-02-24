@@ -39,9 +39,13 @@ elif [ "$CURRENT_LOWER" != "$EXPECTED_LOWER" ]; then
 fi
 
 # Shared folder — uncomment and set to share a host directory with the VM:
-# export SHARED_FOLDER="$HOME/projects/my-project"
+export SHARED_FOLDER="/Volumes/Development/EnkProject8 copy"
 
 echo "Architecture: $VM_ARCH"
 [ -n "$SHARED_FOLDER" ] && echo "Shared folder: $SHARED_FOLDER"
 
-vagrant up
+if vagrant status --machine-readable | grep -q "state,running"; then
+  vagrant reload
+else
+  vagrant up
+fi
