@@ -9,7 +9,6 @@ A pre-configured Ubuntu 24.04 LTS virtual machine with Claude Code and claude-fl
 - **nvm** (Node Version Manager) with **Node.js 22** as default
 - **Claude Code** (`@anthropic-ai/claude-code`)
 - **claude-flow** orchestrator (`claude-flow@alpha`)
-- **Chromium** and **Firefox** browsers
 - **Playwright** with Chromium (for browser automation)
 - **Display auto-resize** when scaling the VirtualBox window (ARM workaround included)
 - **SSH** server enabled
@@ -46,6 +45,7 @@ The base image download only happens once. Vagrant caches it locally, so future 
 | `up.sh` | Entry point. Detects your architecture, checks prerequisites, runs `vagrant up` |
 | `Vagrantfile` | Tells Vagrant how to configure the VM: what base image to use, how much RAM/CPU, shared folders, etc. Think of it as the VM's blueprint |
 | `provision.sh` | Runs inside the VM on first boot. Installs all the software: Node.js, Claude Code, the desktop environment, browsers, etc. |
+| `migrate.sh` | Applies `provision.sh` improvements to existing VMs without re-provisioning. Safe to run multiple times (idempotent) |
 
 ## First-Time Setup
 
@@ -273,6 +273,18 @@ vagrant ssh         # SSH into the VM (auto-switches to claude user)
               │
          vagrant destroy ──→ VM is deleted (start over with ./up.sh)
 ```
+
+## Migrating Existing VMs
+
+If your VM was created before the latest `provision.sh` improvements (snapd removal, full disk utilization, yarn, UFW firewall), you can apply them without destroying and recreating the VM:
+
+```bash
+# Copy the script into the VM and run it
+vagrant ssh -c "cat > /tmp/migrate.sh && chmod +x /tmp/migrate.sh" < migrate.sh
+vagrant ssh -c "sudo bash /tmp/migrate.sh"
+```
+
+The script is idempotent — safe to run multiple times. It skips anything already applied.
 
 ## Customization
 
