@@ -39,7 +39,7 @@ elif [ "$CURRENT_LOWER" != "$EXPECTED_LOWER" ]; then
 fi
 
 # Shared folder — uncomment and set to share a host directory with the VM:
-export SHARED_FOLDER="/Volumes/Development/EnkProject8 copy"
+# export SHARED_FOLDER="/path/to/your/project"
 
 echo "Architecture: $VM_ARCH"
 [ -n "$SHARED_FOLDER" ] && echo "Shared folder: $SHARED_FOLDER"
