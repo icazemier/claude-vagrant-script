@@ -119,11 +119,19 @@ EOF
 cat > /usr/local/bin/vbox-autoresize << 'SCRIPT'
 #!/bin/bash
 while true; do
+  # Ensure VBoxClient --vmsvga-session is running
+  if ! pgrep -f "VBoxClient --vmsvga-session" >/dev/null 2>&1; then
+    /usr/bin/VBoxClient --vmsvga-session 2>/dev/null
+    sleep 2
+    continue
+  fi
+
   output=$(DISPLAY=:0 xrandr 2>/dev/null) || { sleep 2; continue; }
   preferred=$(echo "$output" | grep -A1 "Virtual-1 connected" | tail -1 | awk '{print $1}')
   current=$(echo "$output" | grep "Virtual-1 connected" | grep -oP '\d+x\d+' | head -1)
   if [ -n "$preferred" ] && [ -n "$current" ] && [ "$preferred" != "$current" ]; then
-    DISPLAY=:0 xrandr --output Virtual-1 --preferred 2>/dev/null
+    DISPLAY=:0 xrandr --output Virtual-1 --preferred 2>/dev/null || \
+      DISPLAY=:0 xrandr --output Virtual-1 --auto 2>/dev/null
   fi
   sleep 1
 done
