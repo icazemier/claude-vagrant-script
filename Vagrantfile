@@ -15,6 +15,7 @@ Vagrant.configure("2") do |config|
     vb.customize ["modifyvm", :id, "--clipboard-mode", "bidirectional"]
     vb.customize ["modifyvm", :id, "--draganddrop", "bidirectional"]
     vb.customize ["setextradata", :id, "GUI/AutoresizeGuest", "true"]
+    vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
   end
 
   # Disable vagrant-vbguest auto-update to avoid File.exists? crash
