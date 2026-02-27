@@ -38,11 +38,13 @@ elif [ "$CURRENT_LOWER" != "$EXPECTED_LOWER" ]; then
     --lower-ip="$EXPECTED_LOWER"
 fi
 
-# Shared folder — uncomment and set to share a host directory with the VM:
-# export SHARED_FOLDER="/path/to/your/project"
-
-# Port forwarding — uncomment and list TCP ports to expose on localhost:
-# export FORWARDED_PORTS="3000,8080,5173"
+# Load local overrides (SHARED_FOLDER, FORWARDED_PORTS, etc.)
+# See .env.example for available options.
+if [ -f .env ]; then
+  set -a
+  . ./.env
+  set +a
+fi
 
 echo "Architecture: $VM_ARCH"
 [ -n "$SHARED_FOLDER" ] && echo "Shared folder: $SHARED_FOLDER"
