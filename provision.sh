@@ -69,6 +69,7 @@ apt-get install -y \
   xfdesktop4 \
   xfce4-terminal \
   xfconf \
+  thunar \
   lightdm \
   lightdm-gtk-greeter
 

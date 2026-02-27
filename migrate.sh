@@ -74,7 +74,7 @@ XFCE_BLOAT=(
   xfce4
   mousepad ristretto xfburn xfce4-dict xfce4-screenshooter
   xfce4-taskmanager thunar-archive-plugin thunar-media-tags-plugin
-  thunar tumbler xfce4-appfinder xterm
+  tumbler xfce4-appfinder xterm
 )
 INSTALLED_BLOAT=()
 for pkg in "${XFCE_BLOAT[@]}"; do
@@ -86,7 +86,7 @@ if [ ${#INSTALLED_BLOAT[@]} -gt 0 ]; then
   echo "[4/7] Stripping XFCE to bare minimum (removing ${#INSTALLED_BLOAT[@]} packages)..."
   # Mark the packages we want to keep as manually installed
   apt-mark manual xfwm4 xfce4-panel xfce4-session xfce4-settings \
-    xfdesktop4 xfce4-terminal xfconf 2>/dev/null || true
+    xfdesktop4 xfce4-terminal xfconf thunar 2>/dev/null || true
   apt-get autopurge -y "${INSTALLED_BLOAT[@]}"
 else
   echo "[4/7] XFCE already minimal, skipping."
