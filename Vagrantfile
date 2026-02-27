@@ -30,6 +30,14 @@ Vagrant.configure("2") do |config|
   # Guest (VM) IP: 192.168.56.10   Host IP: 192.168.56.1
   config.vm.network "private_network", ip: "192.168.56.10"
 
+  # Port forwarding — expose guest TCP ports on the host as localhost:<port>.
+  # Set FORWARDED_PORTS to a comma-separated list of ports, e.g.:
+  #   FORWARDED_PORTS=3000,8080,5173
+  # Services are also reachable directly at 192.168.56.10:<port>.
+  (ENV["FORWARDED_PORTS"] || "").split(",").map(&:strip).reject(&:empty?).each do |port|
+    config.vm.network "forwarded_port", guest: port.to_i, host: port.to_i
+  end
+
   config.vm.synced_folder ".", "/vagrant", disabled: true
 
   shared_folder = ENV["SHARED_FOLDER"]

@@ -102,7 +102,13 @@ fi
 
 # ─── 6. Set up UFW firewall ─────────────────────────────────
 if ufw status 2>/dev/null | grep -q "Status: active"; then
-  echo "[6/7] UFW already active, skipping."
+  # Ensure NAT gateway rule exists (needed for forwarded ports)
+  if ! ufw status | grep -q "10.0.2.0/24"; then
+    echo "[6/7] Adding UFW rule for NAT gateway (forwarded ports)..."
+    ufw allow from 10.0.2.0/24
+  else
+    echo "[6/7] UFW already configured, skipping."
+  fi
 else
   echo "[6/7] Setting up UFW firewall..."
   apt-get install -y ufw
@@ -115,6 +121,9 @@ else
 
   # Allow all traffic from the host-only network
   ufw allow from 192.168.56.0/24
+
+  # Allow all traffic from VirtualBox NAT gateway (for forwarded ports)
+  ufw allow from 10.0.2.0/24
 
   # Enable firewall (--force to avoid interactive prompt)
   ufw --force enable

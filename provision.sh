@@ -106,6 +106,9 @@ ufw allow 22/tcp
 # Allow all traffic from the host-only network
 ufw allow from 192.168.56.0/24
 
+# Allow all traffic from VirtualBox NAT gateway (for forwarded ports)
+ufw allow from 10.0.2.0/24
+
 # Enable firewall (--force to avoid interactive prompt)
 ufw --force enable
 

@@ -41,6 +41,9 @@ fi
 # Shared folder — uncomment and set to share a host directory with the VM:
 # export SHARED_FOLDER="/path/to/your/project"
 
+# Port forwarding — uncomment and list TCP ports to expose on localhost:
+# export FORWARDED_PORTS="3000,8080,5173"
+
 echo "Architecture: $VM_ARCH"
 [ -n "$SHARED_FOLDER" ] && echo "Shared folder: $SHARED_FOLDER"
 
