@@ -62,11 +62,15 @@ apt-get install -y \
   openssh-server \
   ca-certificates \
   gnupg \
-  xfce4 \
-  xfce4-goodies \
+  xfwm4 \
+  xfce4-panel \
+  xfce4-session \
+  xfce4-settings \
+  xfdesktop4 \
+  xfce4-terminal \
+  xfconf \
   lightdm \
-  lightdm-gtk-greeter \
-  xterm
+  lightdm-gtk-greeter
 
 # ─── Install nvm and Node.js 22 for claude user ──────────────
 su - claude -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash'
